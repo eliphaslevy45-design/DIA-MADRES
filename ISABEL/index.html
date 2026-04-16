@@ -311,9 +311,106 @@
 
   /* ── Audio oculto ── */
   audio { display: none; }
+
+  /* ══════════════════════════════════════════
+     PROTECCIÓN POR CONTRASEÑA — añadido
+  ══════════════════════════════════════════ */
+  #password-screen {
+    position: fixed;
+    inset: 0;
+    background: rgba(60, 10, 10, 0.97);
+    backdrop-filter: blur(12px);
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.8s ease;
+  }
+  #password-screen .ps-title {
+    font-family: 'Great Vibes', cursive;
+    font-size: clamp(32px, 9vw, 60px);
+    color: #f5d98e;
+    text-shadow: 0 0 20px rgba(245,217,142,0.5);
+    margin-bottom: 8px;
+  }
+  #password-screen .ps-sub {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    color: #e8a0a0;
+    font-size: 16px;
+    margin-bottom: 32px;
+    letter-spacing: 1px;
+  }
+  #password-screen .ps-input-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  #ps-input {
+    padding: 12px 24px;
+    border: 2px solid rgba(245,217,142,0.5);
+    background: rgba(255,255,255,0.07);
+    color: #f5d98e;
+    font-family: 'Cinzel', serif;
+    font-size: 18px;
+    letter-spacing: 6px;
+    border-radius: 40px;
+    text-align: center;
+    outline: none;
+    width: 220px;
+    transition: border-color 0.3s;
+  }
+  #ps-input:focus {
+    border-color: #f5d98e;
+    box-shadow: 0 0 16px rgba(245,217,142,0.3);
+  }
+  #ps-btn {
+    padding: 12px 44px;
+    border: 2px solid #f5d98e;
+    background: transparent;
+    color: #f5d98e;
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    letter-spacing: 3px;
+    border-radius: 40px;
+    cursor: pointer;
+    transition: all 0.4s ease;
+  }
+  #ps-btn:hover {
+    background: rgba(245,217,142,0.15);
+    box-shadow: 0 0 18px rgba(245,217,142,0.4);
+  }
+  #ps-error {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    color: #e8a0a0;
+    font-size: 14px;
+    margin-top: 6px;
+    opacity: 0;
+    transition: opacity 0.4s;
+    min-height: 20px;
+  }
+  #ps-error.visible { opacity: 1; }
 </style>
 </head>
 <body>
+
+<!-- ══ PANTALLA DE CONTRASEÑA — añadido ══ -->
+<div id="password-screen">
+  <p class="ps-title">Acceso privado</p>
+  <p class="ps-sub">Introduce la contraseña para continuar</p>
+  <div class="ps-input-wrap">
+    <input id="ps-input" type="password" maxlength="10"
+           placeholder="••••••"
+           autocomplete="off" autocorrect="off"
+           autocapitalize="characters" spellcheck="false"
+           onkeydown="if(event.key==='Enter') verificarClave()" />
+    <button id="ps-btn" onclick="verificarClave()">✦ &nbsp; Entrar &nbsp; ✦</button>
+    <p id="ps-error">Contraseña incorrecta. Inténtalo de nuevo.</p>
+  </div>
+</div>
 
 <!-- ── Pantalla de bienvenida ── -->
 <div id="welcome-screen" onclick="iniciar()">
@@ -388,6 +485,79 @@
 </div><!-- /wrapper -->
 
 <script>
+  /* ══════════════════════════════════════════
+     PROTECCIÓN POR CONTRASEÑA — añadido
+  ══════════════════════════════════════════ */
+  function verificarClave() {
+    const input = document.getElementById('ps-input').value.trim().toUpperCase();
+    const error = document.getElementById('ps-error');
+    if (input === 'CLAUDE') {
+      const ps = document.getElementById('password-screen');
+      ps.style.opacity = '0';
+      setTimeout(() => ps.style.display = 'none', 800);
+      error.classList.remove('visible');
+    } else {
+      error.classList.add('visible');
+      document.getElementById('ps-input').value = '';
+      document.getElementById('ps-input').focus();
+    }
+  }
+
+  /* ══════════════════════════════════════════
+     BLOQUEO DE DESCARGA — PC y móvil — añadido
+  ══════════════════════════════════════════ */
+
+  /* Bloquear clic derecho */
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+  });
+
+  /* Bloquear Ctrl+S, Ctrl+U, Ctrl+P, Ctrl+A, F12 */
+  document.addEventListener('keydown', function(e) {
+    if (
+      (e.ctrlKey && ['s','u','p','a'].includes(e.key.toLowerCase())) ||
+      e.key === 'F12'
+    ) {
+      e.preventDefault();
+    }
+  });
+
+  /* Bloquear selección de texto */
+  document.addEventListener('selectstart', function(e) {
+    e.preventDefault();
+  });
+
+  /* Bloquear arrastre de imágenes y vídeos */
+  document.addEventListener('dragstart', function(e) {
+    e.preventDefault();
+  });
+
+  /* Bloquear pulsación larga en móvil (long-press → menú guardar) */
+  let longPressTimer = null;
+  document.addEventListener('touchstart', function(e) {
+    longPressTimer = setTimeout(function() {
+      /* No hacemos nada, solo prevenimos el menú contextual */
+    }, 500);
+  }, { passive: false });
+
+  document.addEventListener('touchend', function() {
+    clearTimeout(longPressTimer);
+  });
+
+  /* Bloquear menú contextual táctil en imágenes y vídeos específicamente */
+  document.querySelectorAll('img, video, audio, source').forEach(function(el) {
+    el.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+    el.addEventListener('touchstart',  function(e) { e.preventDefault(); }, { passive: false });
+  });
+
+  /* Aplicar el bloqueo también a elementos que se carguen después */
+  window.addEventListener('load', function() {
+    document.querySelectorAll('img, video, audio, source').forEach(function(el) {
+      el.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+      el.addEventListener('touchstart',  function(e) { e.preventDefault(); }, { passive: false });
+    });
+  });
+
   /* ── Activar música y cerrar pantalla de bienvenida ── */
   function iniciar() {
     const welcome = document.getElementById('welcome-screen');
@@ -473,3 +643,4 @@
 
 </body>
 </html>
+ 
